@@ -358,6 +358,7 @@
     <textarea id="emailBody" rows="9" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:12px;font-size:14px;font-family:inherit;color:var(--ink);background:#fdfdfc;resize:vertical;"></textarea>
 
     <button class="merge-btn" id="composeBtn" type="button" style="margin-top:14px;">Open email draft</button>
+    <button class="merge-btn" id="composeOutlookBtn" type="button" style="margin-top:10px;background:#1a2029;">Open in Outlook</button>
     <div class="hint">Opens your email app with everything filled in. Email links can't attach files automatically — attach the PDF you just saved before sending.</div>
   </div>
 
@@ -392,6 +393,7 @@ const emailCc = document.getElementById('emailCc');
 const emailSubject = document.getElementById('emailSubject');
 const emailBody = document.getElementById('emailBody');
 const composeBtn = document.getElementById('composeBtn');
+const composeOutlookBtn = document.getElementById('composeOutlookBtn');
 
 let lastBlob = null;
 let lastFilename = 'merged.pdf';
@@ -716,6 +718,45 @@ composeBtn.addEventListener('click', () => {
   document.body.appendChild(a);
   a.click();
   a.remove();
+});
+
+composeOutlookBtn.addEventListener('click', () => {
+  const to = emailTo.value.trim();
+  const cc = emailCc.value.split(',').map(s => s.trim()).filter(Boolean).join(',');
+  const params = new URLSearchParams();
+  params.set('to', to);
+  if(cc) params.set('cc', cc);
+  params.set('subject', emailSubject.value);
+  params.set('body', emailBody.value);
+  // Outlook's own app URL scheme — opens straight into the Outlook app
+  // (iOS/Android), independent of whichever app is set as the system
+  // default for mailto: links.
+  const outlookUrl = `ms-outlook://compose?${params.toString().replace(/\+/g,'%20')}`;
+
+  const a = document.createElement('a');
+  a.href = outlookUrl;
+  a.rel = 'noopener';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+
+  // If Outlook isn't installed, the scheme silently fails with no visible
+  // error — fall back to the standard mailto draft after a short delay so
+  // the person isn't left with a dead button.
+  setTimeout(() => {
+    if(document.hidden) return; // Outlook likely opened and took focus
+    const mailParams = new URLSearchParams();
+    if(cc) mailParams.set('cc', cc);
+    mailParams.set('subject', emailSubject.value);
+    mailParams.set('body', emailBody.value);
+    const mailto = `mailto:${encodeURIComponent(to)}?${mailParams.toString().replace(/\+/g,'%20')}`;
+    const fallback = document.createElement('a');
+    fallback.href = mailto;
+    fallback.rel = 'noopener';
+    document.body.appendChild(fallback);
+    fallback.click();
+    fallback.remove();
+  }, 800);
 });
 </script>
 
