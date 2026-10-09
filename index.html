@@ -358,8 +358,9 @@
     <textarea id="emailBody" rows="9" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:12px;font-size:14px;font-family:inherit;color:var(--ink);background:#fdfdfc;resize:vertical;"></textarea>
 
     <button class="merge-btn" id="composeBtn" type="button" style="margin-top:14px;">Open email draft</button>
+    <button class="merge-btn" id="composeOutlookBtn" type="button" style="margin-top:10px;background:#1a2029;display:none;">Open in Outlook</button>
     <div class="hint" id="composeHint">Opens your email app with everything filled in, but no attachment — email links can't attach files. Attach the PDF manually before sending.</div>
-    <div class="hint" id="shareHint" style="display:none;margin-top:4px;">On iPhone, the <strong>Save / Share PDF</strong> button above is the better route: tap it, then choose Mail or Outlook from the share sheet — that attaches the PDF automatically and carries this subject/message with it.</div>
+    <div class="hint" id="shareHint" style="display:none;margin-top:4px;">Tip: the <strong>Save / Share PDF</strong> button above can also attach the PDF directly — tap it, then pick Mail or Outlook from the share sheet.</div>
   </div>
 
 </main>
@@ -393,6 +394,7 @@ const emailCc = document.getElementById('emailCc');
 const emailSubject = document.getElementById('emailSubject');
 const emailBody = document.getElementById('emailBody');
 const composeBtn = document.getElementById('composeBtn');
+const composeOutlookBtn = document.getElementById('composeOutlookBtn');
 
 let lastBlob = null;
 let lastFilename = 'merged.pdf';
@@ -617,6 +619,7 @@ mergeBtn.addEventListener('click', async () => {
     updateEmailFields();
     document.getElementById('composeHint').style.display = isIOS() ? 'none' : 'block';
     document.getElementById('shareHint').style.display = isIOS() ? 'block' : 'none';
+    composeOutlookBtn.style.display = isIOS() ? 'block' : 'none';
   }catch(err){
     statusMsg.textContent = 'Merge failed: ' + err.message;
     statusMsg.classList.add('err');
@@ -727,6 +730,27 @@ composeBtn.addEventListener('click', () => {
   a.remove();
 });
 
+composeOutlookBtn.addEventListener('click', () => {
+  const to = emailTo.value.trim();
+  const cc = emailCc.value.split(',').map(s => s.trim()).filter(Boolean).join(',');
+  const params = new URLSearchParams();
+  params.set('to', to);
+  if(cc) params.set('cc', cc);
+  params.set('subject', emailSubject.value);
+  params.set('body', emailBody.value);
+  // Outlook's iOS URL scheme — this is a genuinely supported path on iOS
+  // (unlike on Windows desktop, where it's unreliable, which is why this
+  // button only appears on iOS). No fallback here on purpose: a fallback
+  // that guesses whether Outlook opened in time was switching people to
+  // Mail even when Outlook was about to open correctly.
+  const outlookUrl = `ms-outlook://compose?${params.toString().replace(/\+/g,'%20')}`;
+  const a = document.createElement('a');
+  a.href = outlookUrl;
+  a.rel = 'noopener';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+});
 </script>
 
 </body>
